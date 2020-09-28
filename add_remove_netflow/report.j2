@@ -1,0 +1,39 @@
+{% for host, facts in hostvars|dictsort %}
+#######################################################################
+Device: {{ facts.inventory_hostname }}
+
+{%   if facts.ios_preconfig.stdout[0] is defined %}
+Pre-config:
+{{ facts.ios_preconfig.stdout[0] }}
+{%   endif %}
+
+{%   if facts.ios_preconfig.stdout[1] is defined %}
+{{ facts.ios_preconfig.stdout[1] }}
+{%   endif %}
+
+{%   if facts.ios_preconfig.stdout[2] is defined %}
+{{ facts.ios_preconfig.stdout[2] }}
+{%   endif %}
+
+{%   if facts.ios_preconfig.stdout[3] is defined %}
+{{ facts.ios_preconfig.stdout[3] }}
+{%   endif %}
+
+{%   if facts.ios_postconfig.stdout[0] is defined %}
+Post-config:
+{{ facts.ios_postconfig.stdout[0] }}
+{%   endif %}
+
+{%   if facts.ios_postconfig.stdout[1] is defined %}
+{{ facts.ios_postconfig.stdout[1] }}
+{%   endif %}
+
+{%   if facts.ios_postconfig.stdout[2] is defined %}
+{{ facts.ios_postconfig.stdout[2] }}
+{%   endif %}
+
+{%   if facts.ios_postconfig.stdout[3] is defined %}
+{{ facts.ios_postconfig.stdout[3] }}
+{%   endif %}
+
+{% endfor%}

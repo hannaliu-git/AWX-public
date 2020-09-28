@@ -1,0 +1,78 @@
+---
+
+bgp_Neighbor_commands:
+
+  bgp_neighbor_1:
+    devicetype: ios
+    neighbor: 7.7.7.7
+    remote_as: 2
+    description:
+    ebgp_multihop:
+    password: 
+    timer_keepalive:
+    timer_holdtime: # Hold time should be greater than the keepalive time
+    min_neighbor_holdtime: # min_neighbor_holdtime should be less than or equal to the configured timer_holdtime
+    update_source:
+    soft_reconfiguration_inbound:
+    send_community:
+    inbound_route_map:
+    outbound_route_map:
+    next_hop_self:
+    action: remove
+
+  bgp_neighbor_2:
+    devicetype: ios
+    neighbor: 8.8.8.8
+    remote_as: 2
+    description: bgp  test
+    ebgp_multihop: 100
+    password: password
+    timer_keepalive: 300
+    timer_holdtime: 360 # Hold time should be greater than the keepalive time
+    min_neighbor_holdtime: 360 # min_neighbor_holdtime should be less than or equal to the configured timer_holdtime
+    update_source: lo0
+    soft_reconfiguration_inbound: true
+    send_community:
+    inbound_route_map: routemapin
+    outbound_route_map: routemapout
+    next_hop_self: false
+    action: add
+
+  bgp_neighbor_3:
+    devicetype: ios
+    neighbor: 10.0.19.2
+    remote_as: 2
+    description: bgp test
+    ebgp_multihop: 
+    password: 
+    timer_keepalive: 
+    timer_holdtime:  # Hold time should be greater than the keepalive time
+    min_neighbor_holdtime: # min_neighbor_holdtime should be less than or equal to the configured timer_holdtime
+    update_source: 
+    soft_reconfiguration_inbound: 
+    send_community:
+    inbound_route_map:
+    outbound_route_map:
+    next_hop_self: 
+    action: add
+
+
+# mandatory fields #
+# devicetype: (ios or nxos)
+# neighbor: (IP address)
+# remote_as: (1-4294967295)
+# action: (add or remove)
+
+# Optional fields #
+# description: 
+# ebgp_multihop: (1-255)
+# password:
+# timer_keepalive: (0-65535)
+# timer_holdtime: (0-65535)
+# min_neighbor_holdtime: (0-65535)
+# update_source: 
+# soft_reconfiguration_inbound: (true or false or nil)
+# send_community: (true or false or nil)
+# inbound_route_map: 
+# outbound_route_map: 
+# next_hop_self: (true or false or nil) 

@@ -1,0 +1,15 @@
+---
+all:
+  children:
+    routers:
+      hosts:
+        R11:
+          ansible_network_os: "ios"
+          ansible_host: 10.122.0.10
+          ansible_user: "cisco"
+          ansible_password: "cisco"
+        R12:
+          ansible_network_os: "ios"
+          ansible_host: 10.123.0.10
+          ansible_user: "cisco"
+          ansible_password: "cisco"

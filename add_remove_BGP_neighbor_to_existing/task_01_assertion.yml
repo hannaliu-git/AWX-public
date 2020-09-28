@@ -1,0 +1,85 @@
+---
+# This is the assertion playbook
+  - name: "Ensure required dictionaries are configured"
+    assert:
+      quiet: true
+      fail_msg: "Missing dictionaries, pls include required dictionary in vars.yml for this play to work."
+      success_msg: "dictionaries are configured!"
+      that:
+        - bgp_Neighbor_commands is defined
+
+  - name: "Check to ensure devicetype inside bgp_Neighbor_commands have been set"
+    assert:
+      quiet: true
+      fail_msg: "{{ item.key }} failed to meet var requirements, devicetype needs to be one of the following, 'ios','nxos'."
+      success_msg: "mandatory vars(devicetype) have been configured!"
+      that:
+        - item.value.devicetype is defined
+        - (item.value.devicetype == "ios" or item.value.devicetype == "nxos")
+    loop: "{{ lookup('dict', bgp_Neighbor_commands, wantlist=True) }}"
+
+  - name: "Check to ensure action field inside bgp_Neighbor_commands have been set"
+    assert:
+      quiet: true
+      fail_msg: "{{ item.key }} failed to meet var requirements, action needs to be one of the following, 'add','remove'"
+      success_msg: "mandatory vars(action) have been configured!"
+      that:
+        - item.value.action is defined
+        - (item.value.action == "add" or item.value.action == "remove")
+    loop: "{{ lookup('dict', bgp_Neighbor_commands, wantlist=True) }}"
+
+  - name: "Check to ensure neighbor field inside bgp_Neighbor_commands have been set"
+    assert:
+      quiet: true
+      fail_msg: "{{ item.key }} failed to meet var requirements, field 'neighbor' is not defined."
+      success_msg: "mandatory vars(neighbor) have been configured!"
+      that:
+        - item.value.neighbor is defined
+#       - '{{ (item.value.neighbor | ipaddr)==item.value.neighbor }}'
+    loop: "{{ lookup('dict', bgp_Neighbor_commands, wantlist=True) }}"
+
+  - name: "Check to ensure remote-as field inside bgp_Neighbor_commands have been set"
+    assert:
+      quiet: true
+      fail_msg: "{{ item.key }} failed to meet var requirements, field 'remote_as' is not defined properly. Must be number 1-4294967295."
+      success_msg: "mandatory vars(remote_as) have been configured!"
+      that:
+        - item.value.remote_as is defined
+        - 1 <= item.value.remote_as <= 4294967295
+    loop: "{{ lookup('dict', bgp_Neighbor_commands, wantlist=True) }}"
+
+  - name: "Check to ensure optional ebgp_multihop field inside bgp_Neighbor_commands is defined properly"
+    assert:
+      quiet: true
+      fail_msg: "{{ item.key }} failed to meet var requirements, field 'ebgp_multihop' is not defined properly. Must be number 1-255."
+      success_msg: "optional vars(ebgp_multihop) have been configured!"
+      that:
+        - 1 <= item.value.ebgp_multihop <= 255
+    when: ((item.value.ebgp_multihop is string) or (item.value.ebgp_multihop is number)) and (item.value.action == "add")
+    loop: "{{ lookup('dict', bgp_Neighbor_commands, wantlist=True) }}"
+
+  - name: "Check to ensure optional timer_keepalive and timer_holdtime fields inside bgp_Neighbor_commands is defined properly"
+    assert:
+      quiet: true
+      fail_msg: "{{ item.key }} failed to meet var requirements, field 'timer_keepalive' or 'timer_holdtime' is not defined properly. Must be number 0-65535. timer_holdtime should be greater than timer_keepalive, and they must present simultaneously."
+      success_msg: "optional vars(timer_keepalive and timer_holdtime) have been configured!"
+      that:
+        - 0 <= item.value.timer_keepalive <= 65535
+        - 0 <= item.value.timer_holdtime <= 65535
+        - item.value.timer_keepalive < item.value.timer_holdtime
+    when: >
+      ((item.value.timer_keepalive is string) or (item.value.timer_keepalive is number) or
+      (item.value.timer_holdtime is string) or (item.value.timer_holdtime is number))and
+      (item.value.action == "add")
+    loop: "{{ lookup('dict', bgp_Neighbor_commands, wantlist=True) }}"
+
+  - name: "Check to ensure optional min_neighbor_holdtime field inside bgp_Neighbor_commands is defined properly"
+    assert:
+      quiet: true
+      fail_msg: "{{ item.key }} failed to meet var requirements, field 'min_neighbor_holdtime' is not defined properly. Must be number 0-65535. min_neighbor_holdtime should be less than or equal to the configured timer_holdtime. min_neighbor_holdtime, timer_keepalive and timer_holdtime must present simultaneously."
+      success_msg: "optional vars(min_neighbor_holdtime) have been configured!"
+      that:
+        - 0 <= item.value.min_neighbor_holdtime <= 65535
+        - item.value.min_neighbor_holdtime <= item.value.timer_holdtime
+    when: ((item.value.min_neighbor_holdtime is string) or (item.value.min_neighbor_holdtime is number)) and (item.value.action == "add")
+    loop: "{{ lookup('dict', bgp_Neighbor_commands, wantlist=True) }}"

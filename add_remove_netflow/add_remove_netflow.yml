@@ -1,0 +1,137 @@
+---
+# This playbook is to add/remove netflow configuration on Cisco devices
+
+- hosts: all
+  gather_facts: false
+
+  tasks:
+   - name: Determine device O/S
+     raw: 'show version'
+     register: showver
+
+     vars:
+      ansible_connection: ssh
+
+  # For IOS devices
+   - block:
+
+    # add netflow config
+     - name: IOS - get pre configuration
+       ios_command:
+         commands:
+           - show ip cache flow | in Active flows timeout
+           - show flow interface
+           - show flow exporter
+           - show flow monitor
+       register: ios_preconfig
+
+     - name: IOS - set flow timeout
+       ios_config:
+          lines: ip flow-cache timeout active {{ Netflow.timeout_active }}
+       when: Netflow.add_Netflow | default('')
+       notify: ios save running config
+
+     - name: IOS - config flow exporter
+       ios_config:
+          lines:
+            - flow exporter {{ Netflow.flow_exporter_name }}
+            - description {{ Netflow.description }}
+            - destination {{ Netflow.flow_exporter_destination }}
+            - source {{ Netflow.source }}
+            - transport {{ Netflow.transport_protocol }}
+            - export-protocol {{ Netflow.export_protocol }}
+          parents: flow exporter {{ Netflow.flow_exporter_name }}
+       when: Netflow.add_Netflow | default('')
+       notify: ios save running config
+
+     - name: IOS - config flow monitor
+       ios_config:
+          lines:
+            - flow monitor {{ Netflow.flow_monitor_name }}
+            - exporter {{ Netflow.flow_exporter_name }}
+            - cache timeout active {{ Netflow.cache_timeout_active }}
+            - record {{ Netflow.record }}
+          parents: flow monitor {{ Netflow.flow_monitor_name }}
+       when: Netflow.add_Netflow | default('')
+       notify: ios save running config
+
+     - name: IOS - assign interfaces
+       ios_config:
+          lines:
+            - int {{ item }}
+            - ip flow monitor {{ Netflow.flow_monitor_name }} input
+          parents: int {{ item }}
+       loop: '{{ Netflow.interfaces }}'
+       when: Netflow.add_Netflow | default('')
+       notify: ios save running config
+
+    # remove netflow config
+
+     - name: IOS - reset flow timeout
+       ios_config:
+          lines: no ip flow-cache timeout active {{ Netflow.timeout_active }}
+       when: Netflow.remove_Netflow | default('')
+       notify: ios save running config
+
+     - name: IOS - remove from interfaces
+       ios_config:
+          lines:
+            - int {{ item }}
+            - no ip flow monitor {{ Netflow.flow_monitor_name }} input
+          parents: int {{ item }}
+       loop: '{{ Netflow.interfaces }}'
+       when: Netflow.remove_Netflow | default('')
+       notify: ios save running config
+
+     - name: IOS - remove flow monitor
+       ios_config:
+          lines: no flow monitor {{ Netflow.flow_monitor_name }}
+       when: Netflow.remove_Netflow | default('')
+       notify: ios save running config
+
+     - name: IOS - remove flow exporter
+       ios_config:
+          lines: no flow exporter {{ Netflow.flow_exporter_name }}
+       when: Netflow.remove_Netflow | default('')
+       notify: ios save running config
+
+
+     - name: IOS - get post configuration
+       ios_command:
+         commands:
+           - show ip cache flow | in Active flows timeout
+           - show flow interface
+           - show flow exporter
+           - show flow monitor
+       register: ios_postconfig
+
+     vars:
+      ansible_network_os: ios
+      ansible_connection: network_cli
+      ansible_command_timeout: 60
+
+     when: showver.stdout is regex('IOS')
+
+  # For NXOS devices - to be developed
+
+   - name: output report
+     template: src='report.j2' dest='netflow_report.txt'
+     run_once: true
+     vars:
+       ansible_connection: local
+
+  handlers:
+    - name: ios save running config
+
+#      connection: network_cli
+#      ios_config:
+#        save_when: modified
+      ios_command:
+        commands:
+        - command: write memory
+          prompt: Overwrite the previous NVRAM configuration?[confirm]
+          answer: '\r'
+
+      vars:
+        ansible_network_os: ios
+        ansible_connection: network_cli

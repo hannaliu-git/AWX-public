@@ -1,0 +1,58 @@
+---
+#Subplay for Cisco IOS
+
+  - block:
+#    - name: "debug user inputs"
+#      debug:
+#        var: outer_item.value
+
+    - name: "Set up variables"
+      set_fact:
+        description: '{{ outer_item.value.description }}'
+        ebgp_multihop: '{{ outer_item.value.ebgp_multihop }}'
+        password: '{{ outer_item.value.password }}'
+        timer_keepalive: '{{ outer_item.value.timer_keepalive }}'
+        min_neighbor_holdtime: '{{ outer_item.value.min_neighbor_holdtime }}'
+        update_source: '{{ outer_item.value.update_source }}'
+        inbound_route_map: '{{ outer_item.value.inbound_route_map }}'
+        outbound_route_map: '{{ outer_item.value.outbound_route_map }}'
+        as_number: '{{ existing_bgp_process.stdout[0].split()[2] | int }}'
+
+
+    - name: "add bgp neighbors"
+      ignore_errors: true
+      #no_log: true
+      register: add_bgp_neighbor
+      ios_config:
+        lines:
+          - neighbor {{ outer_item.value.neighbor }} remote-as {{ outer_item.value.remote_as }}
+          - "{%- if description != '' %} neighbor {{ outer_item.value.neighbor }} description {{ description }} {% endif %}"
+          - "{%- if ebgp_multihop != '' %} neighbor {{ outer_item.value.neighbor }} ebgp-multihop {{ ebgp_multihop }} {% endif %}"
+          - "{%- if password != '' %} neighbor {{ outer_item.value.neighbor }} password {{ password }} {% endif %}"
+          - "{%- if (timer_keepalive != '') and (min_neighbor_holdtime == '') %} neighbor {{ outer_item.value.neighbor }} timers {{ timer_keepalive }} {{ outer_item.value.timer_holdtime }} {% endif %}"
+          - "{%- if min_neighbor_holdtime != '' %} neighbor {{ outer_item.value.neighbor }} timers {{ timer_keepalive }} {{ outer_item.value.timer_holdtime }} {{ min_neighbor_holdtime }} {% endif %}"
+          - "{%- if update_source != '' %} neighbor {{ outer_item.value.neighbor }} update-source {{ update_source }} {% endif %}"
+          - "{%- if outer_item.value.soft_reconfiguration_inbound == true %} neighbor {{ outer_item.value.neighbor }} soft-reconfiguration inbound {% endif %}"
+          - "{%- if outer_item.value.send_community == true %} neighbor {{ outer_item.value.neighbor }} send-community {% endif %}"     
+          - "{%- if inbound_route_map != '' %} neighbor {{ outer_item.value.neighbor }} route-map {{ inbound_route_map }} in {% endif %}"
+          - "{%- if outbound_route_map != '' %} neighbor {{ outer_item.value.neighbor }} route-map {{ outbound_route_map }} out {% endif %}"
+          - "{%- if outer_item.value.next_hop_self == true %} neighbor {{ outer_item.value.neighbor }} next-hop-self {% endif %}"
+        parents: router bgp {{ as_number }}
+      when: outer_item.value.action == "add"
+
+    - name: "remove bgp neighbors"
+      ignore_errors: true
+      #no_log: true
+      register: remove_bgp_neighbor
+      ios_config:
+        lines:
+          - no neighbor {{ outer_item.value.neighbor }}
+        parents: router bgp {{ as_number }}
+      when: outer_item.value.action == "remove"
+
+    - name: "POSTPONE CONFIGURATION SAVE"
+      when: >
+        ( add_bgp_neighbor.changed == true ) or
+        ( remove_bgp_neighbor.changed == true )
+      set_fact: configured=true
+    when: outer_item.value.devicetype == "ios"

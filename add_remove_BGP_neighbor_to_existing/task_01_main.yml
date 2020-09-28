@@ -1,0 +1,74 @@
+---
+# This playbook is to add/remove BGP neighbor to existing BGP process
+- name: GATHER FACTS
+  hosts: all
+  connection: network_cli
+  gather_facts: no
+
+  vars:
+    - log_dir: '{{ playbook_dir }}/artefacts'
+
+  vars_files:
+    - '{{ playbook_dir }}/host_vars/{{ inventory_hostname }}.yml'
+
+
+  tasks:
+
+    - block:
+      - include_tasks: task_01_assertion.yml
+      any_errors_fatal: true
+
+    - name: "Make sure our logs directory exists"
+      file:
+        path: '{{ log_dir }}/'
+        state: directory
+        mode: '0755'
+
+
+  # For IOS
+    - block:
+
+      - name: "GET IOS BGP CONFIGURATION - before"
+        register: get_bgp_config_b4
+        ios_command:
+          commands:
+            - show running-config | sec bgp
+            - show ip route
+            - show ip bgp sum
+
+      - name: "Identify existing BGP process"
+        register: existing_bgp_process
+        ios_command:
+          commands:
+            - show running-config | inc router bgp
+
+      - name: "run IOS BGP commands"
+        include_tasks: ios_subplay.yml
+        loop: "{{ lookup('dict', bgp_Neighbor_commands, wantlist=True) }}"
+        loop_control:
+          loop_var: outer_item
+
+      - name: "SAVE IOS CONFIGURATION"
+        when: (configured is defined) and (configured == true)
+        register: save_config
+        ios_command:
+          commands:
+          - command: 'write memory'
+
+      - name: "GET IOS BGP CONFIGURATION - after"
+        register: get_bgp_config_aft
+        ios_command:
+          commands:
+            - show running-config | sec bgp
+            - show ip route
+            - show ip bgp sum
+            
+      - name: "Output to log dir {{ log_dir }}"
+        template:
+          src: '{{ playbook_dir }}/captures.j2'
+          dest: '{{ log_dir }}/{{ inventory_hostname }}_bgp_config.log'
+        no_log: false
+
+      vars:
+        ansible_command_timeout: 60
+      when: ansible_network_os == "ios"
